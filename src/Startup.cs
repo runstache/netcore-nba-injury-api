@@ -2,16 +2,18 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using NbaStats.Data.Context;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace NbaStats.Injury.Web.Api
+namespace NbaStats.Web.Api
 {
     public class Startup
     {
@@ -25,7 +27,10 @@ namespace NbaStats.Injury.Web.Api
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            string connectionString = Configuration.GetConnectionString("nbastat");
+            services.AddDbContext<SqlContext>(options => options.UseSqlServer(connectionString));            
             services.AddControllers();
+            
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -46,6 +51,8 @@ namespace NbaStats.Injury.Web.Api
             {
                 endpoints.MapControllers();
             });
+
+            
         }
     }
 }

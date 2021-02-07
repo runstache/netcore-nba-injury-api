@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace NbaStats.Injury.Web.Api
+namespace NbaStats.Web.Api
 {
     public class Program
     {
