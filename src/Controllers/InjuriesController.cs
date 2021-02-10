@@ -10,15 +10,15 @@ using NbaStats.Web.Api.Models;
 
 namespace NbaStats.Web.Api.Controllers
 {
-    
-    public class InjuryController : Controller
+    [ApiController]
+    public class InjuriesController : Controller
     {
         private readonly IStatEngine<Data.DataObjects.Injury> engine;
         private readonly IStatEngine<RosterEntry> rosterEngine;
         private readonly IStatEngine<Player> playerEngine;
         private readonly IStatEngine<Team> teamEngine;
 
-        public InjuryController(SqlContext ctx)
+        public InjuriesController(SqlContext ctx)
         {
             engine = new InjuryEngine(ctx);
             rosterEngine = new RosterEntryEngine(ctx);
@@ -26,32 +26,27 @@ namespace NbaStats.Web.Api.Controllers
             teamEngine = new TeamEngine(ctx);
         }
         
-        [HttpGet("api/{controler}/{teamId}")]
-        public IActionResult GetByTeamId(int teamId)
+        [HttpGet("api/{controler}/{id}")]
+        public IActionResult GetInJury(int id)
         {
             try
             {
-                var rosters = rosterEngine.LoadAll().Where(c => c.TeamId == teamId).ToList();
-                var injuries = engine.LoadAll().ToList().Where(c => rosters.Any(r => r.PlayerId == c.PlayerId)).ToList();
-                var team = teamEngine.Load(teamId);
-
-                List<InjuryModel> models = new List<InjuryModel>();
-                foreach (Data.DataObjects.Injury injury in injuries)
+                var injury = engine.Load(id);
+                var player = playerEngine.Load(injury.PlayerId);
+                var roster = rosterEngine.LoadAll().Where(c => c.PlayerId == injury.PlayerId).FirstOrDefault();
+                var team = teamEngine.Load(roster.TeamId);
+                InjuryModel model = new InjuryModel()
                 {
-                    Player player = playerEngine.Load(injury.PlayerId);
+                    Id = injury.Id,
+                    PlayerId = injury.PlayerId,
+                    PlayerName = player.PlayerName,
+                    GameDate = injury.ScratchDate.ToString("yyyy-MM-dd"),
+                    InjuryStatus = injury.InjuryStatus,
+                    TeamName = team.TeamName                                                          
+                };
+                return Ok(model);
 
-                    InjuryModel model = new InjuryModel()
-                    {
-                        InjuryStatus = injury.InjuryStatus,
-                        Id = injury.Id,
-                        GameDate = injury.ScratchDate.ToString("yyyy-MM-dd"),
-                        PlayerName = player.PlayerName,
-                        TeamName = team.TeamName
-                    };
-                    models.Add(model);
-                }
-                return Ok(models);
-            } 
+            }
             catch (Exception ex)
             {
                 return BadRequest(ex.Message);
@@ -96,21 +91,36 @@ namespace NbaStats.Web.Api.Controllers
         {
             try
             {
-                Data.DataObjects.Injury injury = new Data.DataObjects.Injury()
+                if (model.Id > 0)
                 {
-                    Id = model.Id,
-                    PlayerId = model.PlayerId,
-                    InjuryStatus = model.InjuryStatus                    
-                };
+                    Data.DataObjects.Injury injury = new Data.DataObjects.Injury()
+                    {
+                        Id = model.Id,
+                        PlayerId = model.PlayerId,
+                        InjuryStatus = model.InjuryStatus
+                    };
 
-                DateTime result = new DateTime();
-                if (!DateTime.TryParse(model.GameDate, out result))
-                {
-                    result = DateTime.Now;
+                    DateTime result = new DateTime();
+                    if (!DateTime.TryParse(model.GameDate, out result))
+                    {
+                        result = DateTime.Now;
+                    }
+                    injury.ScratchDate = result;
+                    engine.Save(injury);
+                    return Ok();
                 }
-                injury.ScratchDate = result;
-                engine.Save(injury);
-                return Ok();
+                else
+                {
+                    Data.DataObjects.Injury injury = new Injury()
+                    {
+                        PlayerId = model.PlayerId,
+                        InjuryStatus = "OUT",
+                        ScratchDate = DateTime.Now
+                    };
+                    engine.Save(injury);
+                    return Ok();
+
+                }
             }
             catch (Exception ex)
             {
