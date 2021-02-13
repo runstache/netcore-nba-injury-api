@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using NbaStats.Data.Context;
 using NbaStats.Web.Api.Models;
+using Microsoft.Extensions.Logging;
 
 namespace NbaStats.Web.Api.Controllers
 {
@@ -17,13 +18,14 @@ namespace NbaStats.Web.Api.Controllers
         private readonly IStatEngine<RosterEntry> rosterEngine;
         private readonly IStatEngine<Player> playerEngine;
         private readonly IStatEngine<Team> teamEngine;
-
+        
         public InjuriesController(SqlContext ctx)
         {
             engine = new InjuryEngine(ctx);
             rosterEngine = new RosterEntryEngine(ctx);
             playerEngine = new PlayerEngine(ctx);
             teamEngine = new TeamEngine(ctx);
+            
         }
         
         [HttpGet("api/{controler}/{id}")]
@@ -93,21 +95,18 @@ namespace NbaStats.Web.Api.Controllers
             {
                 if (model.Id > 0)
                 {
-                    Data.DataObjects.Injury injury = new Data.DataObjects.Injury()
+                    Data.DataObjects.Injury injury = engine.Load(model.Id);
+                    if (model.InjuryStatus == "ACTIVE")
                     {
-                        Id = model.Id,
-                        PlayerId = model.PlayerId,
-                        InjuryStatus = model.InjuryStatus
-                    };
-
-                    DateTime result = new DateTime();
-                    if (!DateTime.TryParse(model.GameDate, out result))
-                    {
-                        result = DateTime.Now;
+                        engine.Delete(injury);
+                        return Ok();
                     }
-                    injury.ScratchDate = result;
-                    engine.Save(injury);
-                    return Ok();
+                    else
+                    {
+                        injury.InjuryStatus = model.InjuryStatus;
+                        injury = engine.Save(injury);
+                        return Ok(injury);
+                    }
                 }
                 else
                 {
@@ -117,8 +116,8 @@ namespace NbaStats.Web.Api.Controllers
                         InjuryStatus = "OUT",
                         ScratchDate = DateTime.Now
                     };
-                    engine.Save(injury);
-                    return Ok();
+                    injury = engine.Save(injury);
+                    return Ok(injury);
 
                 }
             }

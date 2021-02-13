@@ -59,12 +59,47 @@ namespace NbaStats.Web.Api.Controllers
                         InjuryStatus = injury.InjuryStatus,
                         Id = injury.Id,
                         GameDate = injury.ScratchDate.ToString("yyyy-MM-dd"),
+                        PlayerId = injury.PlayerId,
                         PlayerName = player.PlayerName,
                         TeamName = team.TeamName
                     };
                     models.Add(model);
                 }
                 return Ok(models.OrderBy(c => c.TeamName));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpGet("api/teams/{id}/roster")]
+        public IActionResult GetRoster(int id)
+        {
+            try
+            {
+                var results = rosterEngine.Query(c => c.TeamId == id).ToList();
+                var injuries = engine.LoadAll().ToList();
+                var team = teamEngine.Load(id);
+                List<InjuryModel> models = new List<InjuryModel>();
+                foreach (RosterEntry roster in results)
+                {
+                    if (!injuries.Any(c => c.PlayerId == roster.PlayerId))
+                    {
+                        var player = playerEngine.Load(roster.PlayerId);
+                        InjuryModel model = new InjuryModel()
+                        {
+                            PlayerId = roster.Id,
+                            GameDate = DateTime.Now.ToString("yyyy-MM-dd"),
+                            InjuryStatus = "ACTIVE",
+                            PlayerName = player.PlayerName,
+                            TeamName = team.TeamName
+                        };
+                        models.Add(model);
+                    }
+
+                }
+                return Ok(models);
             }
             catch (Exception ex)
             {

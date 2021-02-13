@@ -30,18 +30,28 @@ namespace NbaStats.Web.Api
             string connectionString = Configuration.GetConnectionString("nbastat");
             services.AddDbContext<SqlContext>(options => options.UseSqlServer(connectionString));            
             services.AddControllers();
-            
+
+            services.AddCors(options =>
+            {
+                options.AddPolicy("AllOrigins", builder =>
+                {
+                    builder.AllowAnyOrigin();
+                    builder.AllowAnyMethod();
+                    builder.AllowAnyHeader();
+                });
+            });                             
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
+            app.UseCors("AllOrigins");
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
             }
 
-            app.UseHttpsRedirection();
+            //app.UseHttpsRedirection();
 
             app.UseRouting();
 
